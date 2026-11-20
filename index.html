@@ -189,7 +189,7 @@
     </div>
   </main>
 
-  <!-- ZAKŁADKA 3: PROGRES (WYKRESY + ZDJĘCIA Z KONKRETNYCH DAT) -->
+  <!-- ZAKŁADKA 3: PROGRES (WYKRESY + ZDJĘCIA Z DATY + PORÓWNANIE DWÓCH DAT) -->
   <main id="view-progress" class="hidden p-4 space-y-4">
     <!-- Wykres postępów -->
     <div class="clean-card p-4 space-y-3">
@@ -218,7 +218,7 @@
 
     <!-- Przeglądarka zdjęć z konkretnej daty -->
     <div class="clean-card p-4 space-y-3">
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center gap-2">
         <h3 class="font-semibold text-sm text-gray-900">Zdjęcia z wybranej daty</h3>
         <select id="photo-date-select" onchange="renderPhotosForSelectedDate()" class="text-xs font-semibold bg-[#fdf2f8] text-[#f45ca1] px-2.5 py-1.5 rounded-xl border border-pink-200">
           <option value="">Wybierz datę</option>
@@ -232,14 +232,34 @@
       <div id="photos-grid" class="grid grid-cols-3 gap-2"></div>
     </div>
 
-    <!-- Szybkie porównanie dwóch dat -->
+    <!-- Porównanie dwóch dat (pomiary + zdjęcia obok siebie) -->
     <div class="clean-card p-4 space-y-3">
-      <h3 class="font-semibold text-sm text-gray-900">Porównanie dwóch dat</h3>
-      <div class="grid grid-cols-2 gap-2">
-        <select id="compare-date-1" onchange="renderComparison()" class="text-xs font-medium bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]"></select>
-        <select id="compare-date-2" onchange="renderComparison()" class="text-xs font-medium bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]"></select>
+      <div class="day-banner px-3.5 py-2 flex justify-between items-center">
+        <span class="font-semibold text-sm text-gray-900">Porównanie dwóch dat</span>
+        <select id="compare-angle" onchange="renderComparison()" class="text-xs font-semibold bg-white text-gray-800 px-2 py-1 rounded-lg border border-[#eaecf0]">
+          <option value="ALL">Wszystkie ujęcia (3)</option>
+          <option value="Przod">Tylko Przód</option>
+          <option value="Tyl">Tylko Tył</option>
+          <option value="Bok">Tylko Bok</option>
+        </select>
       </div>
-      <div id="comparison-box" class="text-xs text-[#71717a] space-y-2"></div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] text-[#71717a] mb-1">Data 1 (wcześniejsza)</label>
+          <select id="compare-date-1" onchange="renderComparison()" class="w-full text-xs font-medium bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]"></select>
+        </div>
+        <div>
+          <label class="block text-[10px] text-[#71717a] mb-1">Data 2 (nowsza)</label>
+          <select id="compare-date-2" onchange="renderComparison()" class="w-full text-xs font-medium bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]"></select>
+        </div>
+      </div>
+
+      <!-- Porównanie zdjęć z dwóch dat -->
+      <div id="photo-comparison-box" class="space-y-2.5 pt-1"></div>
+
+      <!-- Porównanie wartości pomiarów -->
+      <div id="comparison-box" class="text-xs text-[#71717a] space-y-2 pt-1"></div>
     </div>
   </main>
 
@@ -495,7 +515,16 @@ window.onload = () => {
   }
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    navigator.serviceWorker.register('sw.js?v=3', { updateViaCache: 'none' })
+      .then((reg) => reg.update())
+      .catch(() => {});
   }
 };
 
@@ -706,6 +735,10 @@ async function refreshDrivePhotosIndex() {
   });
 }
 
+function findPhotoFileId(dateStr, angleKey) {
+  return drivePhotosMap[`${dateStr}${angleKey}.jpg`] || drivePhotosMap[`${dateStr}${angleKey}.png`] || null;
+}
+
 async function fetchAuthorizedPhotoUrl(fileId) {
   if (!fileId || !accessToken) return null;
   if (blobUrlCache[fileId]) return blobUrlCache[fileId];
@@ -820,7 +853,12 @@ async function loadHistoryFromSheet() {
 }
 
 function populateDateSelectors() {
-  const dates = [...new Set(sheetRowsAsc.map(r => r[0]))];
+  const sheetDates = sheetRowsAsc.map(r => r[0]);
+  const photoDates = Object.keys(drivePhotosMap)
+    .map(name => name.replace(/(Przod|Tyl|Bok)\.(jpg|png)$/i, ''))
+    .filter(Boolean);
+
+  const dates = [...new Set([...sheetDates, ...photoDates])].sort();
   const photoSelect = document.getElementById('photo-date-select');
   const c1 = document.getElementById('compare-date-1');
   const c2 = document.getElementById('compare-date-2');
@@ -831,11 +869,13 @@ function populateDateSelectors() {
   photoSelect.innerHTML = [...dates].reverse().map(d => `<option value="${d}">${d}</option>`).join('');
   photoSelect.value = dates.includes(currentPhotoDate) ? currentPhotoDate : dates[dates.length - 1];
 
+  const prevC1 = c1.value;
+  const prevC2 = c2.value;
   const optionsHtml = dates.map(d => `<option value="${d}">${d}</option>`).join('');
   c1.innerHTML = optionsHtml;
   c2.innerHTML = optionsHtml;
-  c1.value = dates[0];
-  c2.value = dates[dates.length - 1];
+  c1.value = dates.includes(prevC1) ? prevC1 : dates[0];
+  c2.value = dates.includes(prevC2) ? prevC2 : dates[dates.length - 1];
 }
 
 function initEmptyChart() {
@@ -929,9 +969,7 @@ async function renderPhotosForSelectedDate() {
   `).join('');
 
   for (const v of views) {
-    const fileNameJpg = `${dateStr}${v.key}.jpg`;
-    const fileNamePng = `${dateStr}${v.key}.png`;
-    const fileId = drivePhotosMap[fileNameJpg] || drivePhotosMap[fileNamePng];
+    const fileId = findPhotoFileId(dateStr, v.key);
     const slot = document.getElementById(`slot-${v.key}`);
 
     if (!fileId) {
@@ -948,15 +986,65 @@ async function renderPhotosForSelectedDate() {
   }
 }
 
-function renderComparison() {
+async function renderComparison() {
   const d1 = document.getElementById('compare-date-1').value;
   const d2 = document.getElementById('compare-date-2').value;
+  const angleMode = document.getElementById('compare-angle').value;
+  const photoBox = document.getElementById('photo-comparison-box');
   const box = document.getElementById('comparison-box');
-  if (!d1 || !d2 || !sheetRowsAsc.length) return;
+
+  if (!d1 || !d2) return;
+
+  const allAngles = [
+    { key: 'Przod', label: 'Przód' },
+    { key: 'Tyl', label: 'Tył' },
+    { key: 'Bok', label: 'Bok' }
+  ];
+  const anglesToShow = angleMode === 'ALL' ? allAngles : allAngles.filter(a => a.key === angleMode);
+
+  photoBox.innerHTML = anglesToShow.map(a => `
+    <div class="bg-[#f8f9fb] border border-[#eaecf0] rounded-xl p-2 space-y-1.5">
+      <div class="text-[11px] font-semibold text-gray-800 px-1">${a.label}</div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="text-center">
+          <div id="cmp-${a.key}-1" class="aspect-[3/4] rounded-lg bg-white border border-[#eaecf0] flex items-center justify-center text-[11px] text-[#71717a] overflow-hidden">
+            Ładowanie...
+          </div>
+          <div class="text-[10px] text-[#71717a] mt-1">${d1}</div>
+        </div>
+        <div class="text-center">
+          <div id="cmp-${a.key}-2" class="aspect-[3/4] rounded-lg bg-white border border-[#eaecf0] flex items-center justify-center text-[11px] text-[#71717a] overflow-hidden">
+            Ładowanie...
+          </div>
+          <div class="text-[10px] font-semibold text-[#f45ca1] mt-1">${d2}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  for (const a of anglesToShow) {
+    for (const [idx, dateStr] of [[1, d1], [2, d2]]) {
+      const target = document.getElementById(`cmp-${a.key}-${idx}`);
+      const fileId = findPhotoFileId(dateStr, a.key);
+      if (!fileId) {
+        target.innerText = 'Brak foto';
+        continue;
+      }
+      const url = await fetchAuthorizedPhotoUrl(fileId);
+      if (url) {
+        target.innerHTML = `<img src="${url}" onclick="openLightbox('${url}', '${dateStr} — ${a.label}')" class="w-full h-full object-cover cursor-pointer" />`;
+      } else {
+        target.innerText = 'Błąd foto';
+      }
+    }
+  }
 
   const r1 = sheetRowsAsc.find(r => r[0] === d1);
   const r2 = sheetRowsAsc.find(r => r[0] === d2);
-  if (!r1 || !r2) return;
+  if (!r1 || !r2) {
+    box.innerHTML = '';
+    return;
+  }
 
   const metrics = [
     { idx: 1, name: 'Waga', unit: 'kg' },
