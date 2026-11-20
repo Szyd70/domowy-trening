@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trening-pwa-v3';
+const CACHE_NAME = 'trening-pwa-v4';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -34,7 +34,6 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/index.html') ||
     url.pathname.endsWith('/manifest.json');
 
-  // Dla HTML i manifestu: najpierw sieć (z pominięciem cache HTTP), przy braku netu -> cache
   if (isHtmlOrManifest) {
     event.respondWith(
       fetch(new Request(event.request, { cache: 'no-store' }))
@@ -48,7 +47,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Dla grafik ćwiczeń i pozostałych zasobów: cache z aktualizacją w tle
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request)
