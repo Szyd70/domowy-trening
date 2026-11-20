@@ -5,170 +5,277 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Domowy Plan Treningowy</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#ec4899" />
+  <meta name="theme-color" content="#f45ca1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #fdf2f8; -webkit-tap-highlight-color: transparent; }
-    .tab-active { color: #db2777; border-top: 2px solid #db2777; font-weight: 600; }
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    :root {
+      --bg-page: #f8f9fb;
+      --bg-card: #ffffff;
+      --border-card: #eaecf0;
+      --accent-pink: #f45ca1;
+      --accent-pink-soft: #fdf2f8;
+      --accent-green-soft: #eef8f1;
+      --accent-blue-soft: #eef5ff;
+      --text-main: #18181b;
+      --text-muted: #71717a;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .clean-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(16, 24, 40, 0.03);
+    }
+    .day-banner {
+      background-color: var(--accent-green-soft);
+      color: #1f2937;
+      border-radius: 12px;
+    }
+    .tab-active {
+      color: var(--accent-pink);
+      font-weight: 700;
+    }
   </style>
 </head>
-<body class="pb-24 text-gray-800">
+<body class="pb-24">
 
-  <!-- HEADER -->
-  <header class="bg-white shadow-sm sticky top-0 z-30 px-4 py-3 flex justify-between items-center">
-    <div>
-      <h1 class="text-lg font-bold text-pink-600">Plan Treningowy</h1>
-      <p id="auth-status" class="text-xs text-gray-500">Niezalogowano z Google</p>
+  <!-- NAGŁÓWEK -->
+  <header class="bg-white/95 backdrop-blur border-b border-[#eaecf0] sticky top-0 z-30 px-4 py-3 flex justify-between items-center">
+    <div class="flex items-baseline gap-1">
+      <span class="text-xl font-extrabold tracking-tight text-[#f45ca1]">plan</span>
+      <span class="text-xl font-normal tracking-tight text-gray-900">treningowy</span>
+      <span class="text-[10px] align-top text-gray-400">®</span>
     </div>
-    <button id="btn-auth" onclick="handleAuthClick()" class="bg-pink-600 hover:bg-pink-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow">
+    <button id="btn-auth" onclick="handleAuthClick()" class="bg-[#fdf2f8] hover:bg-pink-100 text-[#f45ca1] border border-pink-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition">
       Połącz z Google
     </button>
   </header>
 
+  <div id="auth-bar" class="px-4 pt-2 text-[11px] text-[#71717a] flex justify-between items-center">
+    <span id="auth-status">Status: niezalogowano</span>
+    <span id="sync-status">Arkusz: 9 kolumn (A:I)</span>
+  </div>
+
   <!-- POWIADOMIENIA -->
-  <div id="toast" class="hidden fixed top-16 left-4 right-4 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg text-center"></div>
+  <div id="toast" class="hidden fixed top-16 left-4 right-4 z-50 bg-gray-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg text-center"></div>
 
   <!-- ZAKŁADKA 1: TRENING -->
   <main id="view-workout" class="p-4 space-y-4">
-    <!-- Wybór Miesiąca i Dnia Tygodnia -->
-    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-      <div class="flex justify-between items-center">
-        <label class="text-xs font-semibold uppercase text-gray-400">Etap programu</label>
-        <select id="select-month" onchange="renderWorkout()" class="text-sm font-semibold bg-pink-50 text-pink-700 px-3 py-1.5 rounded-lg border border-pink-200">
-          <option value="1">Miesiąc 1 (Wprowadzenie)</option>
-          <option value="2">Miesiąc 2 (Progresja)</option>
-          <option value="3" selected>Miesiąc 3 (Zaawansowany)</option>
+    <div class="space-y-2.5">
+      <div class="clean-card p-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-[#eef5ff] text-[#2b7fff] flex items-center justify-center text-lg font-bold">📎</div>
+          <div>
+            <div class="text-sm font-semibold text-gray-900">Plan Domowy • 3 Miesiące</div>
+            <div class="text-xs text-[#71717a]">Superserie, Tabata i AMRAP</div>
+          </div>
+        </div>
+        <select id="select-month" onchange="renderWorkout()" class="text-xs font-semibold bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]">
+          <option value="1">Miesiąc 1</option>
+          <option value="2">Miesiąc 2</option>
+          <option value="3" selected>Miesiąc 3</option>
         </select>
       </div>
 
-      <!-- Dni tygodnia -->
-      <div class="grid grid-cols-7 gap-1 text-center pt-1" id="week-days"></div>
+      <div class="clean-card p-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-[#fdf2f8] text-[#f45ca1] flex items-center justify-center text-lg font-bold">⏱️</div>
+          <div>
+            <div class="text-sm font-semibold text-gray-900">Stoper przerw i interwałów</div>
+            <div class="text-xs text-[#71717a]">Szybkie odliczanie serii</div>
+          </div>
+        </div>
+        <div id="timer-display" class="text-xl font-mono font-bold text-gray-900">00:00</div>
+      </div>
+
+      <div class="grid grid-cols-5 gap-1.5">
+        <button onclick="startTimer(30)" class="clean-card py-2 text-xs font-semibold text-gray-800 hover:border-pink-300">30s</button>
+        <button onclick="startTimer(45)" class="clean-card py-2 text-xs font-semibold text-gray-800 hover:border-pink-300">45s</button>
+        <button onclick="startTimer(60)" class="clean-card py-2 text-xs font-semibold text-gray-800 hover:border-pink-300">60s</button>
+        <button onclick="startTimer(90)" class="clean-card py-2 text-xs font-semibold text-gray-800 hover:border-pink-300">90s</button>
+        <button onclick="stopTimer()" class="bg-[#fdf2f8] border border-pink-200 rounded-2xl py-2 text-xs font-semibold text-[#f45ca1]">Reset</button>
+      </div>
     </div>
 
-    <!-- Timer Przerw / Interwałów -->
-    <div class="bg-gradient-to-r from-pink-600 to-rose-500 text-white p-4 rounded-2xl shadow-md flex justify-between items-center">
-      <div>
-        <div class="text-xs opacity-80 uppercase tracking-wider">Stoper / Przerwa</div>
-        <div id="timer-display" class="text-3xl font-mono font-bold">00:00</div>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="startTimer(30)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">30s</button>
-        <button onclick="startTimer(45)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">45s</button>
-        <button onclick="startTimer(60)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">60s</button>
-        <button onclick="startTimer(90)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">90s</button>
-        <button onclick="stopTimer()" class="bg-black/25 px-2.5 py-1.5 rounded-lg text-xs font-bold">Stop</button>
-      </div>
+    <div class="clean-card p-3 space-y-2.5">
+      <div class="text-xs font-medium text-[#71717a]">Wybierz dzień tygodnia</div>
+      <div class="grid grid-cols-7 gap-1 text-center" id="week-days"></div>
     </div>
 
-    <!-- Lista ćwiczeń na wybrany dzień -->
     <div id="workout-container" class="space-y-4"></div>
   </main>
 
-  <!-- ZAKŁADKA 2: POMIARY I ZDJĘCIA -->
+  <!-- ZAKŁADKA 2: POMIARY -->
   <main id="view-measurements" class="hidden p-4 space-y-4">
-    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-4">
-      <div class="flex justify-between items-center">
-        <h2 class="font-bold text-gray-800">Nowy wpis pomiarowy</h2>
-        <input type="date" id="m-date" class="text-sm border rounded-lg px-2 py-1 bg-gray-50" />
+    <div class="clean-card p-4 space-y-4">
+      <div class="day-banner px-3.5 py-2.5 flex justify-between items-center">
+        <span class="font-semibold text-sm text-gray-900">Nowy wpis pomiarowy</span>
+        <input type="date" id="m-date" class="text-xs font-medium bg-white border border-[#eaecf0] rounded-lg px-2 py-1 text-gray-800" />
       </div>
 
       <div class="grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Waga (kg)</label>
-          <input type="number" step="0.1" id="m-weight" placeholder="np. 60.5" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5">
+          <label class="block text-[11px] text-[#71717a]">Waga (kg)</label>
+          <input type="number" step="0.1" id="m-weight" placeholder="np. 60.5" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Talia (cm) <span class="text-[10px]">(najwęższe)</span></label>
-          <input type="number" step="0.5" id="m-waist" placeholder="np. 66" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5">
+          <label class="block text-[11px] text-[#71717a]">Talia (cm) • najwęższe</label>
+          <input type="number" step="0.5" id="m-waist" placeholder="np. 66" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Pas (cm) <span class="text-[10px]">(1cm pod pępkiem)</span></label>
-          <input type="number" step="0.5" id="m-belt" placeholder="np. 74" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5">
+          <label class="block text-[11px] text-[#71717a]">Pas (cm) • 1 cm pod pępkiem</label>
+          <input type="number" step="0.5" id="m-belt" placeholder="np. 74" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Biodra (cm) <span class="text-[10px]">(najszersze)</span></label>
-          <input type="number" step="0.5" id="m-hips" placeholder="np. 95" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5">
+          <label class="block text-[11px] text-[#71717a]">Biodra (cm) • najszersze</label>
+          <input type="number" step="0.5" id="m-hips" placeholder="np. 95" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Udo (cm)</label>
-          <input type="number" step="0.5" id="m-thigh" placeholder="np. 54" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5">
+          <label class="block text-[11px] text-[#71717a]">Udo (cm)</label>
+          <input type="number" step="0.5" id="m-thigh" placeholder="np. 54" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Ramię / Biceps (cm)</label>
-          <input type="number" step="0.5" id="m-arm" placeholder="np. 27" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5">
+          <label class="block text-[11px] text-[#71717a]">Ramię / biceps (cm)</label>
+          <input type="number" step="0.5" id="m-arm" placeholder="np. 27" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div class="col-span-2">
-          <label class="block text-xs text-gray-500 mb-1">Klatka pod biustem (cm)</label>
-          <input type="number" step="0.5" id="m-underbust" placeholder="np. 75" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5 col-span-2">
+          <label class="block text-[11px] text-[#71717a]">Klatka piersiowa pod biustem (cm)</label>
+          <input type="number" step="0.5" id="m-underbust" placeholder="np. 75" class="w-full font-semibold text-gray-900 mt-1 focus:outline-none" />
         </div>
-        <div class="col-span-2">
-          <label class="block text-xs text-gray-500 mb-1">Notatka</label>
-          <input type="text" id="m-note" placeholder="np. Po 1 tygodniu powrotu" class="w-full border rounded-xl px-3 py-2" />
+        <div class="clean-card p-2.5 col-span-2">
+          <label class="block text-[11px] text-[#71717a]">Notatka</label>
+          <input type="text" id="m-note" placeholder="np. Samopoczucie, energia..." class="w-full font-medium text-gray-900 mt-1 focus:outline-none" />
         </div>
       </div>
 
-      <!-- Zdjęcia sylwetki -->
-      <div class="border-t pt-3 space-y-2">
-        <p class="text-xs font-semibold text-gray-600">Zdjęcia sylwetki (zapis na Dysk Google jako DataPrzod/Tyl/Bok)</p>
+      <div class="space-y-2">
+        <div class="text-xs text-[#71717a]">Zdjęcia na Dysk Google (nazwy: <span class="font-semibold text-gray-800">DataPrzod</span>, <span class="font-semibold text-gray-800">DataTyl</span>, <span class="font-semibold text-gray-800">DataBok</span>)</div>
         <div class="grid grid-cols-3 gap-2 text-center text-xs">
-          <label class="border-2 border-dashed border-pink-200 rounded-xl p-2 cursor-pointer hover:bg-pink-50 flex flex-col items-center justify-center h-24">
-            <span id="lbl-przod" class="font-semibold text-pink-600">+ Przód</span>
+          <label class="clean-card border-dashed border-pink-200 bg-[#fdf2f8]/60 p-2 cursor-pointer flex flex-col items-center justify-center h-20">
+            <span id="lbl-przod" class="font-semibold text-[#f45ca1]">+ Przód</span>
             <input type="file" accept="image/*" id="photo-przod" onchange="previewLabel('photo-przod', 'lbl-przod', 'Przód OK')" class="hidden" />
           </label>
-          <label class="border-2 border-dashed border-pink-200 rounded-xl p-2 cursor-pointer hover:bg-pink-50 flex flex-col items-center justify-center h-24">
-            <span id="lbl-tyl" class="font-semibold text-pink-600">+ Tył</span>
+          <label class="clean-card border-dashed border-pink-200 bg-[#fdf2f8]/60 p-2 cursor-pointer flex flex-col items-center justify-center h-20">
+            <span id="lbl-tyl" class="font-semibold text-[#f45ca1]">+ Tył</span>
             <input type="file" accept="image/*" id="photo-tyl" onchange="previewLabel('photo-tyl', 'lbl-tyl', 'Tył OK')" class="hidden" />
           </label>
-          <label class="border-2 border-dashed border-pink-200 rounded-xl p-2 cursor-pointer hover:bg-pink-50 flex flex-col items-center justify-center h-24">
-            <span id="lbl-bok" class="font-semibold text-pink-600">+ Bok</span>
+          <label class="clean-card border-dashed border-pink-200 bg-[#fdf2f8]/60 p-2 cursor-pointer flex flex-col items-center justify-center h-20">
+            <span id="lbl-bok" class="font-semibold text-[#f45ca1]">+ Bok</span>
             <input type="file" accept="image/*" id="photo-bok" onchange="previewLabel('photo-bok', 'lbl-bok', 'Bok OK')" class="hidden" />
           </label>
         </div>
       </div>
 
-      <button id="btn-save-measurement" onclick="saveMeasurementAndPhotos()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow">
-        Zapisz pomiary i wyślij zdjęcia
+      <button id="btn-save-measurement" onclick="saveMeasurementAndPhotos()" class="w-full bg-[#f45ca1] hover:bg-pink-600 text-white font-semibold py-3 rounded-2xl transition">
+        Zapisz pomiary i zdjęcia
       </button>
     </div>
 
-    <!-- Historia z Arkusza Google -->
-    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+    <div class="clean-card p-4 space-y-3">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-gray-800">Historia z Arkusza</h3>
-        <button onclick="loadHistoryFromSheet()" class="text-xs text-pink-600 font-semibold">Odśwież</button>
+        <h3 class="font-semibold text-sm text-gray-900">Ostatnie wpisy z arkusza</h3>
+        <button onclick="loadHistoryFromSheet()" class="text-xs font-semibold text-[#f45ca1]">Odśwież</button>
       </div>
-      <div id="history-list" class="space-y-2 text-xs text-gray-600">
-        Zaloguj się z Google, aby pobrać historię z arkusza.
+      <div id="history-list" class="space-y-2.5 text-xs text-[#71717a]">
+        Połącz z Google, aby pobrać wpisy z arkusza.
       </div>
     </div>
   </main>
 
-  <!-- ZAKŁADKA 3: BAZA ĆWICZEŃ (29 ĆWICZEŃ) -->
+  <!-- ZAKŁADKA 3: PROGRES (WYKRESY + ZDJĘCIA Z KONKRETNYCH DAT) -->
+  <main id="view-progress" class="hidden p-4 space-y-4">
+    <!-- Wykres postępów -->
+    <div class="clean-card p-4 space-y-3">
+      <div class="day-banner px-3.5 py-2 flex justify-between items-center">
+        <span class="font-semibold text-sm text-gray-900">Wykres postępów</span>
+        <span id="progress-diff" class="text-xs font-bold text-[#f45ca1]">—</span>
+      </div>
+
+      <div class="flex gap-2 items-center">
+        <select id="metric-select" onchange="updateProgressChart()" class="w-full text-xs font-semibold bg-[#f8f9fb] text-gray-900 px-3 py-2.5 rounded-xl border border-[#eaecf0]">
+          <option value="1">Waga (kg)</option>
+          <option value="2">Talia (cm)</option>
+          <option value="3">Pas (cm)</option>
+          <option value="4">Biodra (cm)</option>
+          <option value="5">Udo (cm)</option>
+          <option value="6">Ramię / biceps (cm)</option>
+          <option value="7">Klatka pod biustem (cm)</option>
+        </select>
+        <button onclick="loadHistoryFromSheet()" class="clean-card px-3 py-2.5 text-xs font-semibold text-[#f45ca1] shrink-0">Odśwież</button>
+      </div>
+
+      <div class="relative h-56 w-full">
+        <canvas id="progressChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Przeglądarka zdjęć z konkretnej daty -->
+    <div class="clean-card p-4 space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="font-semibold text-sm text-gray-900">Zdjęcia z wybranej daty</h3>
+        <select id="photo-date-select" onchange="renderPhotosForSelectedDate()" class="text-xs font-semibold bg-[#fdf2f8] text-[#f45ca1] px-2.5 py-1.5 rounded-xl border border-pink-200">
+          <option value="">Wybierz datę</option>
+        </select>
+      </div>
+
+      <div id="photo-date-summary" class="text-xs text-[#71717a] bg-[#f8f9fb] px-3 py-2 rounded-xl border border-[#eaecf0]">
+        Wybierz datę, aby wyświetlić zdjęcia Przód, Tył i Bok.
+      </div>
+
+      <div id="photos-grid" class="grid grid-cols-3 gap-2"></div>
+    </div>
+
+    <!-- Szybkie porównanie dwóch dat -->
+    <div class="clean-card p-4 space-y-3">
+      <h3 class="font-semibold text-sm text-gray-900">Porównanie dwóch dat</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <select id="compare-date-1" onchange="renderComparison()" class="text-xs font-medium bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]"></select>
+        <select id="compare-date-2" onchange="renderComparison()" class="text-xs font-medium bg-[#f8f9fb] text-gray-800 px-2.5 py-2 rounded-xl border border-[#eaecf0]"></select>
+      </div>
+      <div id="comparison-box" class="text-xs text-[#71717a] space-y-2"></div>
+    </div>
+  </main>
+
+  <!-- ZAKŁADKA 4: BAZA ĆWICZEŃ -->
   <main id="view-exercises" class="hidden p-4 space-y-3">
-    <input type="text" id="search-ex" oninput="renderAllExercises()" placeholder="Szukaj ćwiczenia (np. Hip thrust, guma)..." class="w-full bg-white border rounded-xl px-4 py-2.5 text-sm shadow-sm" />
-    <div id="all-exercises-list" class="space-y-3"></div>
+    <input type="text" id="search-ex" oninput="renderAllExercises()" placeholder="Szukaj ćwiczenia lub sprzętu..." class="clean-card w-full px-4 py-3 text-sm focus:outline-none" />
+    <div id="all-exercises-list" class="space-y-2.5"></div>
   </main>
 
   <!-- DOLNA NAWIGACJA -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 grid grid-cols-3 text-center text-xs py-2 z-30">
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#eaecf0] grid grid-cols-4 text-center text-[11px] py-2 z-30">
     <button onclick="switchTab('workout')" id="nav-workout" class="tab-active py-1 flex flex-col items-center">
-      <span class="text-lg">🏋️‍♀️</span>
+      <span class="text-base">🏋️‍♀️</span>
       <span>Trening</span>
     </button>
-    <button onclick="switchTab('measurements')" id="nav-measurements" class="text-gray-500 py-1 flex flex-col items-center">
-      <span class="text-lg">📏</span>
-      <span>Pomiary i Foto</span>
+    <button onclick="switchTab('measurements')" id="nav-measurements" class="text-[#71717a] py-1 flex flex-col items-center">
+      <span class="text-base">📏</span>
+      <span>Pomiary</span>
     </button>
-    <button onclick="switchTab('exercises')" id="nav-exercises" class="text-gray-500 py-1 flex flex-col items-center">
-      <span class="text-lg">📋</span>
-      <span>Baza (29)</span>
+    <button onclick="switchTab('progress')" id="nav-progress" class="text-[#71717a] py-1 flex flex-col items-center">
+      <span class="text-base">📈</span>
+      <span>Progres</span>
+    </button>
+    <button onclick="switchTab('exercises')" id="nav-exercises" class="text-[#71717a] py-1 flex flex-col items-center">
+      <span class="text-base">📋</span>
+      <span>Ćwiczenia</span>
     </button>
   </nav>
 
+  <!-- PODGLĄD PEŁNOEKRANOWY ZDJĘCIA -->
+  <div id="lightbox" onclick="closeLightbox()" class="hidden fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-4">
+    <img id="lightbox-img" src="" class="max-h-[80vh] max-w-full rounded-2xl shadow-xl object-contain" />
+    <div id="lightbox-caption" class="text-white text-xs mt-3 font-medium"></div>
+  </div>
+
 <script>
-// ================= KONFIGURACJA GOOGLE =================
 const CONFIG = {
   CLIENT_ID: '809311918834-evq0ienhj58ggvulpmbngeg65d2aakpn.apps.googleusercontent.com',
   SPREADSHEET_ID: '1hbjV_lS50ef_ztSo0FDjJyHEkIZc7TOJRaHJJs1u5YE',
@@ -179,10 +286,12 @@ const CONFIG = {
 
 let tokenClient;
 let accessToken = localStorage.getItem('g_access_token') || null;
-let selectedDay = new Date().getDay(); // 0=Nd, 1=Pn...
+let selectedDay = new Date().getDay();
+let drivePhotosMap = {};
+let sheetRowsAsc = [];
+let progressChartInstance = null;
+const blobUrlCache = {};
 
-// ================= BAZA 29 ĆWICZEŃ =================
-// Pliki graficzne wrzuć do folderu /exercises/ pod podanymi nazwami
 const EXERCISES_DB = {
   donkey_kicks: { name: 'Donkey kicks z gumą', img: 'exercises/donkey_kicks.jpg', eq: 'Guma mini-band' },
   fire_hydrant: { name: 'Fire hydrant z gumą', img: 'exercises/fire_hydrant.jpg', eq: 'Guma mini-band' },
@@ -217,128 +326,127 @@ const EXERCISES_DB = {
   alt_vups: { name: 'V-ups naprzemiennie', img: 'exercises/alt_vups.jpg', eq: 'Mata' }
 };
 
-// ================= PLANY TRENINGOWE (LOGIKA 3 MIESIĘCY) =================
 const PLANS = {
-  1: { // MIESIĄC 1 (3 serie / wprowadzenie)
+  1: {
     A: {
-      title: 'Trening A (Miesiąc 1)',
+      title: 'Trening 1 • Dom A (Miesiąc 1)',
       blocks: [
-        { name: 'Superset 1 (3 razy, przerwa 90s)', items: [
+        { name: 'Superset 1 • 3 serie • przerwa 90s', items: [
           { ex: 'donkey_kicks', reps: '12x na nogę' },
           { ex: 'hip_thrust_1leg', reps: '10x na nogę' },
           { ex: 'rear_delt_raise', reps: '12x' }
         ]},
-        { name: 'Superset 2 (3 razy, przerwa 90s)', items: [
+        { name: 'Superset 2 • 3 serie • przerwa 90s', items: [
           { ex: 'lying_abduction', reps: '12x' },
           { ex: 'rdl', reps: '10x' },
           { ex: 'row_1arm', reps: '8x na stronę' }
         ]},
-        { name: 'Superset 3 (3 razy, przerwa 90s)', items: [
+        { name: 'Superset 3 • 3 serie • przerwa 90s', items: [
           { ex: 'leg_raises', reps: '10x' },
           { ex: 'plank', reps: '45s' }
         ]}
       ]
     },
     B: {
-      title: 'Trening B (Miesiąc 1)',
+      title: 'Trening 1 • Dom B (Miesiąc 1)',
       blocks: [
-        { name: 'Superset 1 (3 razy, przerwa 90s)', items: [
+        { name: 'Superset 1 • 3 serie • przerwa 90s', items: [
           { ex: 'kickbacks', reps: '12x na nogę' },
           { ex: 'glute_bridge_1leg', reps: '10x na nogę' },
           { ex: 'lat_pulldown_seated', reps: '15x' }
         ]},
-        { name: 'Superset 2 (3 razy, przerwa 90s)', items: [
+        { name: 'Superset 2 • 3 serie • przerwa 90s', items: [
           { ex: 'clamshell', reps: '12x na nogę' },
           { ex: 'box_sumo_sq', reps: '10x' },
           { ex: 'arnold_press', reps: '12x' }
         ]},
-        { name: 'Superset 3 (3 razy, przerwa 90s)', items: [
+        { name: 'Superset 3 • 3 serie • przerwa 90s', items: [
           { ex: 'side_plank', reps: '20s na stronę' },
           { ex: 'alt_vups', reps: '20x' }
         ]}
       ]
     }
   },
-  2: { // MIESIĄC 2 (AMRAP 6' + 4 serie)
+  2: {
     A: {
-      title: 'Trening A (Miesiąc 2)',
+      title: 'Trening 1 • Dom A (Miesiąc 2)',
       blocks: [
-        { name: 'Superset 1 (4 razy, przerwa 90s)', items: [
+        { name: 'Superset 1 • 4 serie • przerwa 90s', items: [
           { ex: 'donkey_kicks', reps: '15x na nogę' },
           { ex: 'hip_thrust', reps: '15x' },
           { ex: 'lateral_raise', reps: '12x' }
         ]},
-        { name: 'Superset 2 (4 razy, przerwa 90s)', items: [
+        { name: 'Superset 2 • 4 serie • przerwa 90s', items: [
           { ex: 'fire_hydrant', reps: '15x na nogę' },
           { ex: 'rdl', reps: '12x' },
           { ex: 'front_raise', reps: '12x' }
         ]},
-        { name: 'AMRAP 6 minut (maksymalna ilość rund)', items: [
+        { name: 'AMRAP 6 minut • maks. rund', items: [
           { ex: 'knee_tucks', reps: '15x' },
           { ex: 'plank', reps: '45s' }
         ]}
       ]
     },
     B: {
-      title: 'Trening B (Miesiąc 2)',
+      title: 'Trening 1 • Dom B (Miesiąc 2)',
       blocks: [
-        { name: 'Superset 1 (4 razy, przerwa 90s)', items: [
+        { name: 'Superset 1 • 4 serie • przerwa 90s', items: [
           { ex: 'kickbacks', reps: '15x na nogę' },
           { ex: 'glute_bridge', reps: '15x' },
           { ex: 'row', reps: '12x' }
         ]},
-        { name: 'Superset 2 (4 razy, przerwa 90s)', items: [
+        { name: 'Superset 2 • 4 serie • przerwa 90s', items: [
           { ex: 'side_abduction', reps: '15x na nogę' },
           { ex: 'reverse_lunges', reps: '20x' },
           { ex: 'overhead_press', reps: '12x' }
         ]},
-        { name: 'Tabata (6 serii: 30s pracy / 20s przerwy)', items: [
-          { ex: 'frog_crunches', reps: '30s (serie nieparzyste)' },
-          { ex: 'alt_vups', reps: '30s (serie parzyste)' }
+        { name: 'Tabata • 6 serii (30s pracy / 20s przerwy)', items: [
+          { ex: 'frog_crunches', reps: '30s (serie 1, 3, 5)' },
+          { ex: 'alt_vups', reps: '30s (serie 2, 4, 6)' }
         ]}
       ]
     }
   },
-  3: { // MIESIĄC 3 (AMRAP 8' + Tabata 8 serii)
+  3: {
     A: {
-      title: 'Trening A (Miesiąc 3)',
+      title: 'Trening 1 • Dom A (Miesiąc 3)',
       blocks: [
-        { name: 'Superset 1 (4 razy, przerwa 30s)', items: [
+        { name: 'Superset 1 • 4 serie • przerwa 30s', items: [
           { ex: 'donkey_kicks', reps: '15x na nogę' },
           { ex: 'fire_hydrant', reps: '15x na nogę' }
         ]},
-        { name: 'Superset 2 (4 razy, przerwa 60s)', items: [
+        { name: 'Superset 2 • 4 serie • przerwa 60s', items: [
           { ex: 'hip_thrust', reps: '12x' },
           { ex: 'deadlift', reps: '12x' }
         ]},
-        { name: 'Superset 3 (4 razy, przerwa 60s)', items: [
+        { name: 'Superset 3 • 4 serie • przerwa 60s', items: [
           { ex: 'lat_pulldown', reps: '10x' },
           { ex: 'front_raise', reps: '10x' },
           { ex: 'lateral_raise', reps: '10x' }
         ]},
-        { name: 'AMRAP 8 minut (maksymalna ilość rund)', items: [
+        { name: 'AMRAP 8 minut • maks. rund', items: [
           { ex: 'knee_tucks', reps: '15x' },
           { ex: 'plank', reps: '45s' }
         ]}
       ]
     },
     B: {
-      title: 'Trening B (Miesiąc 3)',
+      title: 'Trening 1 • Dom B (Miesiąc 3)',
       blocks: [
-        { name: 'Superset 1 (4 razy, przerwa 30s)', items: [
+        { name: 'Superset 1 • 4 serie • przerwa 30s', items: [
           { ex: 'kickbacks', reps: '15x na nogę' },
           { ex: 'side_abduction', reps: '15x na nogę' }
         ]},
-        { name: 'Superset 2 (4 razy, przerwa 60s)', items: [
+        { name: 'Superset 2 • 4 serie • przerwa 60s', items: [
           { ex: 'glute_bridge', reps: '12x' },
           { ex: 'bulgarian_split', reps: '10x na nogę' }
         ]},
-        { name: 'Superset 3 (4 razy, przerwa 60s)', items: [
+        { name: 'Superset 3 • 4 serie • przerwa 60s', items: [
           { ex: 'shoulder_abduction', reps: '10x' },
           { ex: 'row', reps: '10x' },
           { ex: 'overhead_press', reps: '10x' }
         ]},
-        { name: 'Tabata (8 serii: 30s pracy / 20s przerwy)', items: [
+        { name: 'Tabata • 8 serii (30s pracy / 20s przerwy)', items: [
           { ex: 'frog_crunches', reps: '30s (serie 1,3,5,7)' },
           { ex: 'alt_vups', reps: '30s (serie 2,4,6,8)' }
         ]}
@@ -347,27 +455,26 @@ const PLANS = {
   }
 };
 
-// Harmonogram tygodniowy: Pn=A, Wt=Wolne, Śr=B, Czw=Wolne, Pt=A, Sob=B(opcjonalnie), Nd=Wolne
 const SCHEDULE_MAP = {
-  1: { label: 'Pn', type: 'A' },
-  2: { label: 'Wt', type: 'REST' },
-  3: { label: 'Śr', type: 'B' },
-  4: { label: 'Cz', type: 'REST' },
-  5: { label: 'Pt', type: 'A' },
-  6: { label: 'So', type: 'B' },
-  0: { label: 'Nd', type: 'REST' }
+  1: { label: 'Poniedziałek', short: 'Pn', type: 'A' },
+  2: { label: 'Wtorek', short: 'Wt', type: 'REST' },
+  3: { label: 'Środa', short: 'Śr', type: 'B' },
+  4: { label: 'Czwartek', short: 'Cz', type: 'REST' },
+  5: { label: 'Piątek', short: 'Pt', type: 'A' },
+  6: { label: 'Sobota', short: 'So', type: 'B' },
+  0: { label: 'Niedziela', short: 'Nd', type: 'REST' }
 };
 
-// ================= INICJALIZACJA GOOGLE OAUTH =================
 window.onload = () => {
   document.getElementById('m-date').valueAsDate = new Date();
   renderWeekDays();
   renderWorkout();
   renderAllExercises();
+  initEmptyChart();
 
   if (accessToken) {
-    document.getElementById('auth-status').innerText = 'Połączono z Google';
-    document.getElementById('btn-auth').innerText = 'Odśwież sesję';
+    document.getElementById('auth-status').innerText = 'Status: połączono z Google';
+    document.getElementById('btn-auth').innerText = 'Odśwież';
     loadHistoryFromSheet();
   }
 
@@ -379,8 +486,9 @@ window.onload = () => {
         if (resp.error) { showToast('Błąd logowania: ' + resp.error); return; }
         accessToken = resp.access_token;
         localStorage.setItem('g_access_token', accessToken);
-        document.getElementById('auth-status').innerText = 'Połączono z Google ✅';
-        showToast('Zalogowano pomyślnie!');
+        document.getElementById('auth-status').innerText = 'Status: połączono z Google';
+        document.getElementById('btn-auth').innerText = 'Odśwież';
+        showToast('Połączono z kontem Google');
         loadHistoryFromSheet();
       }
     });
@@ -392,41 +500,45 @@ window.onload = () => {
 };
 
 function handleAuthClick() {
-  if (!tokenClient) { showToast('Ładowanie biblioteki Google...'); return; }
+  if (!tokenClient) { showToast('Ładowanie Google...'); return; }
   tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
-// ================= UI I NAWIGACJA =================
 function switchTab(tab) {
-  ['workout', 'measurements', 'exercises'].forEach(t => {
+  ['workout', 'measurements', 'progress', 'exercises'].forEach(t => {
     document.getElementById('view-' + t).classList.add('hidden');
     document.getElementById('nav-' + t).classList.remove('tab-active');
-    document.getElementById('nav-' + t).classList.add('text-gray-500');
+    document.getElementById('nav-' + t).classList.add('text-[#71717a]');
   });
   document.getElementById('view-' + tab).classList.remove('hidden');
   document.getElementById('nav-' + tab).classList.add('tab-active');
-  document.getElementById('nav-' + tab).classList.remove('text-gray-500');
+  document.getElementById('nav-' + tab).classList.remove('text-[#71717a]');
+
+  if (tab === 'progress' && sheetRowsAsc.length) {
+    updateProgressChart();
+    renderPhotosForSelectedDate();
+    renderComparison();
+  }
 }
 
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.innerText = msg;
   el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 3500);
+  setTimeout(() => el.classList.add('hidden'), 3200);
 }
 
-// ================= RENDEROWANIE TRENINGU =================
 function renderWeekDays() {
   const order = [1, 2, 3, 4, 5, 6, 0];
   const container = document.getElementById('week-days');
   container.innerHTML = order.map(d => {
     const info = SCHEDULE_MAP[d];
     const isSelected = d === selectedDay;
-    const badge = info.type === 'REST' ? 'Reg.' : info.type;
+    const badge = info.type === 'REST' ? 'Wolne' : 'Dom ' + info.type;
     return `
-      <button onclick="selectDay(${d})" class="py-2 rounded-xl flex flex-col items-center transition ${isSelected ? 'bg-pink-600 text-white shadow' : 'bg-gray-50 text-gray-600'}">
-        <span class="text-xs font-bold">${info.label}</span>
-        <span class="text-[10px] mt-0.5 ${isSelected ? 'text-pink-100' : 'text-pink-600 font-semibold'}">${badge}</span>
+      <button onclick="selectDay(${d})" class="py-2 px-1 rounded-xl flex flex-col items-center transition border ${isSelected ? 'bg-[#fdf2f8] border-[#f45ca1] text-[#f45ca1]' : 'bg-[#f8f9fb] border-transparent text-gray-700'}">
+        <span class="text-xs font-semibold">${info.short}</span>
+        <span class="text-[10px] mt-0.5 ${isSelected ? 'text-[#f45ca1] font-bold' : 'text-[#71717a]'}">${badge}</span>
       </button>
     `;
   }).join('');
@@ -443,37 +555,45 @@ function renderWorkout() {
   const dayInfo = SCHEDULE_MAP[selectedDay];
   const month = document.getElementById('select-month').value;
 
+  let html = `<div class="day-banner px-4 py-2.5 font-semibold text-sm text-gray-900">${dayInfo.label}</div>`;
+
   if (dayInfo.type === 'REST') {
-    container.innerHTML = `
-      <div class="bg-white p-8 rounded-2xl shadow-sm text-center space-y-2">
-        <div class="text-4xl">🧘‍♀️</div>
-        <h3 class="font-bold text-gray-800 text-lg">Dzień regeneracji</h3>
-        <p class="text-sm text-gray-500">Odpoczynek, spacer lub lekkie rozciąganie. Jeśli chcesz zrobić trening, wybierz Pn, Śr, Pt lub So.</p>
+    html += `
+      <div class="clean-card p-6 text-center space-y-1.5">
+        <div class="text-xs text-[#71717a]">Regeneracja</div>
+        <div class="font-semibold text-gray-900">Dzień wolny od treningu siłowego</div>
+        <div class="text-xs text-[#71717a]">Spacer, lekki ruch lub odpoczynek</div>
       </div>`;
+    container.innerHTML = html;
     return;
   }
 
   const plan = PLANS[month][dayInfo.type];
-  let html = `<h2 class="font-bold text-gray-800 text-lg px-1">${plan.title}</h2>`;
+  html += `
+    <div class="clean-card p-3.5 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-[#f8f9fb] border border-[#eaecf0] flex items-center justify-center text-xs font-bold text-gray-800">${dayInfo.type}</div>
+      <div>
+        <div class="text-[11px] text-[#71717a]">Trening</div>
+        <div class="text-sm font-semibold text-gray-900">${plan.title}</div>
+      </div>
+    </div>`;
 
-  plan.blocks.forEach((block, bIdx) => {
+  plan.blocks.forEach(block => {
     html += `
-      <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
-        <div class="bg-pink-50 text-pink-700 font-bold text-xs px-3 py-1.5 rounded-lg uppercase tracking-wide">
-          ${block.name}
-        </div>
-        <div class="space-y-3 divide-y divide-gray-100">
-          ${block.items.map((item, iIdx) => {
+      <div class="clean-card p-4 space-y-3">
+        <div class="text-xs font-semibold text-[#f45ca1] bg-[#fdf2f8] px-3 py-1.5 rounded-xl">${block.name}</div>
+        <div class="space-y-3 divide-y divide-[#eaecf0]">
+          ${block.items.map(item => {
             const ex = EXERCISES_DB[item.ex];
             return `
               <div class="pt-3 first:pt-0 flex items-center gap-3">
-                <img src="${ex.img}" onerror="this.src='https://placehold.co/120x90/fce7f3/db2777?text=Foto'" class="w-20 h-16 object-cover rounded-xl bg-pink-50 shrink-0 border border-pink-100" />
+                <img src="${ex.img}" onerror="this.src='https://placehold.co/120x90/fdf2f8/f45ca1?text=Foto'" class="w-16 h-14 object-cover rounded-xl bg-[#fdf2f8] border border-[#eaecf0] shrink-0" />
                 <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-sm text-gray-800 leading-tight">${ex.name}</div>
-                  <div class="text-xs text-pink-600 font-bold mt-1">${item.reps}</div>
-                  <div class="text-[11px] text-gray-400">${ex.eq}</div>
+                  <div class="text-sm font-semibold text-gray-900 leading-snug">${ex.name}</div>
+                  <div class="text-xs font-semibold text-[#f45ca1] mt-0.5">${item.reps}</div>
+                  <div class="text-[11px] text-[#71717a]">${ex.eq}</div>
                 </div>
-                <input type="checkbox" class="w-5 h-5 accent-pink-600 rounded" />
+                <input type="checkbox" class="w-5 h-5 accent-[#f45ca1] rounded" />
               </div>`;
           }).join('')}
         </div>
@@ -488,17 +608,16 @@ function renderAllExercises() {
   const list = document.getElementById('all-exercises-list');
   const entries = Object.values(EXERCISES_DB).filter(e => e.name.toLowerCase().includes(q) || e.eq.toLowerCase().includes(q));
   list.innerHTML = entries.map(ex => `
-    <div class="bg-white p-3 rounded-2xl shadow-sm flex items-center gap-3">
-      <img src="${ex.img}" onerror="this.src='https://placehold.co/120x90/fce7f3/db2777?text=Foto'" class="w-20 h-16 object-cover rounded-xl bg-pink-50 shrink-0" />
+    <div class="clean-card p-3 flex items-center gap-3">
+      <img src="${ex.img}" onerror="this.src='https://placehold.co/120x90/fdf2f8/f45ca1?text=Foto'" class="w-16 h-14 object-cover rounded-xl bg-[#fdf2f8] border border-[#eaecf0] shrink-0" />
       <div>
-        <div class="font-semibold text-sm text-gray-800">${ex.name}</div>
-        <div class="text-xs text-gray-500 mt-0.5">${ex.eq}</div>
+        <div class="text-sm font-semibold text-gray-900">${ex.name}</div>
+        <div class="text-xs text-[#71717a] mt-0.5">${ex.eq}</div>
       </div>
     </div>
   `).join('');
 }
 
-// ================= STOPER / TIMER =================
 let timerInterval;
 function startTimer(seconds) {
   clearInterval(timerInterval);
@@ -510,7 +629,7 @@ function startTimer(seconds) {
     if (left <= 0) {
       clearInterval(timerInterval);
       if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
-      showToast('⏰ Koniec przerwy! Kolejna seria!');
+      showToast('Koniec czasu!');
     }
   }, 1000);
 }
@@ -524,11 +643,10 @@ function updateTimerDisplay(sec) {
   document.getElementById('timer-display').innerText = `${m}:${s}`;
 }
 
-// ================= ZDJĘCIA I KOMPRESJA + GOOGLE DRIVE =================
 function previewLabel(inputId, labelId, text) {
   const input = document.getElementById(inputId);
   if (input.files && input.files[0]) {
-    document.getElementById(labelId).innerText = '✅ ' + text;
+    document.getElementById(labelId).innerText = '✓ ' + text;
   }
 }
 
@@ -551,13 +669,13 @@ function compressImage(file, maxWidth = 1280, quality = 0.82) {
   });
 }
 
-async function uploadPhotoToDrive(fileInputId, fileName) {
+async function uploadPhotoToDrive(fileInputId, exactFileName) {
   const input = document.getElementById(fileInputId);
-  if (!input.files || !input.files[0]) return '';
+  if (!input.files || !input.files[0]) return;
 
   const compressedBlob = await compressImage(input.files[0]);
   const metadata = {
-    name: fileName + '.jpg',
+    name: exactFileName,
     parents: [CONFIG.DRIVE_FOLDER_ID]
   };
 
@@ -565,37 +683,59 @@ async function uploadPhotoToDrive(fileInputId, fileName) {
   form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   form.append('file', compressedBlob);
 
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + accessToken },
     body: form
   });
 
-  if (!res.ok) throw new Error('Błąd wysyłania zdjęcia ' + fileName);
-  const data = await res.json();
-  return data.id;
+  if (!res.ok) throw new Error('Błąd wysyłania ' + exactFileName);
 }
 
-// ================= ZAPIS DO GOOGLE SHEETS =================
+async function refreshDrivePhotosIndex() {
+  if (!accessToken) return;
+  const q = encodeURIComponent(`'${CONFIG.DRIVE_FOLDER_ID}' in parents and trashed = false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=300`, {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  if (!res.ok) return;
+  const data = await res.json();
+  drivePhotosMap = {};
+  (data.files || []).forEach(f => {
+    drivePhotosMap[f.name] = f.id;
+  });
+}
+
+async function fetchAuthorizedPhotoUrl(fileId) {
+  if (!fileId || !accessToken) return null;
+  if (blobUrlCache[fileId]) return blobUrlCache[fileId];
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  blobUrlCache[fileId] = url;
+  return url;
+}
+
 async function saveMeasurementAndPhotos() {
   if (!accessToken) {
-    showToast('Najpierw kliknij "Połącz z Google" u góry ekranu!');
+    showToast('Najpierw kliknij "Połącz z Google"');
     return;
   }
 
   const btn = document.getElementById('btn-save-measurement');
   btn.disabled = true;
-  btn.innerText = 'Wysyłanie danych i zdjęć...';
+  btn.innerText = 'Zapisywanie...';
 
   const dateVal = document.getElementById('m-date').value || new Date().toISOString().split('T')[0];
 
   try {
-    // 1. Wyślij zdjęcia na Dysk Google z nazwami DataPrzod, DataTyl, DataBok
-    const przodId = await uploadPhotoToDrive('photo-przod', `${dateVal}Przod`);
-    const tylId = await uploadPhotoToDrive('photo-tyl', `${dateVal}Tyl`);
-    const bokId = await uploadPhotoToDrive('photo-bok', `${dateVal}Bok`);
+    await uploadPhotoToDrive('photo-przod', `${dateVal}Przod.jpg`);
+    await uploadPhotoToDrive('photo-tyl', `${dateVal}Tyl.jpg`);
+    await uploadPhotoToDrive('photo-bok', `${dateVal}Bok.jpg`);
 
-    // 2. Przygotuj wiersz do Arkusza Google
     const row = [
       dateVal,
       document.getElementById('m-weight').value || '',
@@ -605,13 +745,10 @@ async function saveMeasurementAndPhotos() {
       document.getElementById('m-thigh').value || '',
       document.getElementById('m-arm').value || '',
       document.getElementById('m-underbust').value || '',
-      document.getElementById('m-note').value || '',
-      przodId,
-      tylId,
-      bokId
+      document.getElementById('m-note').value || ''
     ];
 
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.SHEET_NAME}!A:L:append?valueInputOption=USER_ENTERED`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.SHEET_NAME}!A:I:append?valueInputOption=USER_ENTERED`;
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -625,54 +762,237 @@ async function saveMeasurementAndPhotos() {
       if (res.status === 401) {
         localStorage.removeItem('g_access_token');
         accessToken = null;
-        throw new Error('Sesja Google wygasła — kliknij "Połącz z Google" ponownie.');
+        throw new Error('Sesja wygasła — kliknij "Połącz z Google"');
       }
-      throw new Error('Błąd zapisu do Arkusza Google');
+      throw new Error('Błąd zapisu w Arkuszu Google');
     }
 
-    showToast('✅ Zapisano pomiary w Arkuszu i zdjęcia na Dysku!');
+    showToast('Zapisano pomiary i zdjęcia');
     loadHistoryFromSheet();
   } catch (err) {
-    showToast('❌ ' + err.message);
+    showToast(err.message);
   } finally {
     btn.disabled = false;
-    btn.innerText = 'Zapisz pomiary i wyślij zdjęcia';
+    btn.innerText = 'Zapisz pomiary i zdjęcia';
   }
 }
 
 async function loadHistoryFromSheet() {
   if (!accessToken) return;
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.SHEET_NAME}!A2:L50`;
+    await refreshDrivePhotosIndex();
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.SHEET_NAME}!A2:I200`;
     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
     if (!res.ok) return;
     const data = await res.json();
-    const rows = (data.values || []).reverse();
+    sheetRowsAsc = (data.values || []).filter(r => r && r[0]);
+
+    populateDateSelectors();
+    updateProgressChart();
+    renderPhotosForSelectedDate();
+    renderComparison();
+
+    const rowsDesc = [...sheetRowsAsc].reverse();
     const container = document.getElementById('history-list');
 
-    if (!rows.length) {
-      container.innerHTML = 'Brak zapisanych pomiarów w arkuszu.';
+    if (!rowsDesc.length) {
+      container.innerHTML = 'Brak wpisów w arkuszu.';
       return;
     }
 
-    container.innerHTML = rows.map(r => `
-      <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-        <div class="flex justify-between font-bold text-gray-800">
-          <span>📅 ${r[0] || '-'}</span>
-          <span class="text-pink-600">${r[1] ? r[1] + ' kg' : ''}</span>
+    container.innerHTML = rowsDesc.map(r => {
+      const d = r[0] || '';
+      return `
+        <div class="p-3 bg-[#f8f9fb] rounded-xl border border-[#eaecf0] space-y-1">
+          <div class="flex justify-between font-semibold text-gray-900">
+            <span>${d}</span>
+            <span class="text-[#f45ca1]">${r[1] ? r[1] + ' kg' : ''}</span>
+          </div>
+          <div class="text-[11px] text-gray-700 leading-relaxed">
+            Talia: <b>${r[2] || '-'}</b> • Pas: <b>${r[3] || '-'}</b> • Biodra: <b>${r[4] || '-'}</b><br>
+            Udo: <b>${r[5] || '-'}</b> • Ramię: <b>${r[6] || '-'}</b> • Pod biustem: <b>${r[7] || '-'}</b>
+          </div>
+          ${r[8] ? `<div class="text-[11px] text-[#71717a]">${r[8]}</div>` : ''}
         </div>
-        <div class="text-[11px] text-gray-600">
-          Talia: <b>${r[2] || '-'}</b> | Pas: <b>${r[3] || '-'}</b> | Biodra: <b>${r[4] || '-'}</b> | Udo: <b>${r[5] || '-'}</b> | Ramię: <b>${r[6] || '-'}</b> | Pod biustem: <b>${r[7] || '-'}</b>
-        </div>
-        ${r[8] ? `<div class="text-[11px] italic text-gray-500">"${r[8]}"</div>` : ''}
-        <div class="flex gap-2 pt-1 text-[11px]">
-          ${r[9] ? `<a href="https://drive.google.com/file/d/${r[9]}/view" target="_blank" class="text-pink-600 underline">📷 Przód</a>` : ''}
-          ${r[10] ? `<a href="https://drive.google.com/file/d/${r[10]}/view" target="_blank" class="text-pink-600 underline">📷 Tył</a>` : ''}
-          ${r[11] ? `<a href="https://drive.google.com/file/d/${r[11]}/view" target="_blank" class="text-pink-600 underline">📷 Bok</a>` : ''}
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   } catch (e) {}
+}
+
+function populateDateSelectors() {
+  const dates = [...new Set(sheetRowsAsc.map(r => r[0]))];
+  const photoSelect = document.getElementById('photo-date-select');
+  const c1 = document.getElementById('compare-date-1');
+  const c2 = document.getElementById('compare-date-2');
+
+  if (!dates.length) return;
+
+  const currentPhotoDate = photoSelect.value;
+  photoSelect.innerHTML = [...dates].reverse().map(d => `<option value="${d}">${d}</option>`).join('');
+  photoSelect.value = dates.includes(currentPhotoDate) ? currentPhotoDate : dates[dates.length - 1];
+
+  const optionsHtml = dates.map(d => `<option value="${d}">${d}</option>`).join('');
+  c1.innerHTML = optionsHtml;
+  c2.innerHTML = optionsHtml;
+  c1.value = dates[0];
+  c2.value = dates[dates.length - 1];
+}
+
+function initEmptyChart() {
+  const ctx = document.getElementById('progressChart');
+  if (!ctx || typeof Chart === 'undefined') return;
+  progressChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Waga (kg)',
+        data: [],
+        borderColor: '#f45ca1',
+        backgroundColor: 'rgba(244, 92, 161, 0.12)',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: '#f45ca1',
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#eaecf0' }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function updateProgressChart() {
+  if (!progressChartInstance) return;
+  const colIdx = Number(document.getElementById('metric-select').value);
+  const labelText = document.getElementById('metric-select').selectedOptions[0].text;
+
+  const points = sheetRowsAsc
+    .map(r => ({
+      date: r[0],
+      val: parseFloat(String(r[colIdx] || '').replace(',', '.'))
+    }))
+    .filter(p => !isNaN(p.val));
+
+  progressChartInstance.data.labels = points.map(p => p.date);
+  progressChartInstance.data.datasets[0].label = labelText;
+  progressChartInstance.data.datasets[0].data = points.map(p => p.val);
+  progressChartInstance.update();
+
+  const diffEl = document.getElementById('progress-diff');
+  if (points.length >= 2) {
+    const delta = (points[points.length - 1].val - points[0].val).toFixed(1);
+    const sign = delta > 0 ? '+' : '';
+    diffEl.innerText = `Zmiana: ${sign}${delta}`;
+  } else {
+    diffEl.innerText = points.length === 1 ? `${points[0].val}` : '—';
+  }
+}
+
+async function renderPhotosForSelectedDate() {
+  const dateStr = document.getElementById('photo-date-select').value;
+  const grid = document.getElementById('photos-grid');
+  const summary = document.getElementById('photo-date-summary');
+
+  if (!dateStr) {
+    grid.innerHTML = '';
+    return;
+  }
+
+  const row = [...sheetRowsAsc].reverse().find(r => r[0] === dateStr);
+  if (row) {
+    summary.innerHTML = `<b>${dateStr}</b> • Waga: <b>${row[1] || '-'} kg</b> • Talia: <b>${row[2] || '-'} cm</b> • Biodra: <b>${row[4] || '-'} cm</b>`;
+  } else {
+    summary.innerText = `Data: ${dateStr}`;
+  }
+
+  const views = [
+    { key: 'Przod', label: 'Przód' },
+    { key: 'Tyl', label: 'Tył' },
+    { key: 'Bok', label: 'Bok' }
+  ];
+
+  grid.innerHTML = views.map(v => `
+    <div class="bg-[#f8f9fb] border border-[#eaecf0] rounded-xl p-1.5 text-center">
+      <div id="slot-${v.key}" class="aspect-[3/4] rounded-lg bg-white flex items-center justify-center text-[11px] text-[#71717a] overflow-hidden">
+        Ładowanie...
+      </div>
+      <div class="text-[11px] font-semibold text-gray-800 mt-1">${v.label}</div>
+    </div>
+  `).join('');
+
+  for (const v of views) {
+    const fileNameJpg = `${dateStr}${v.key}.jpg`;
+    const fileNamePng = `${dateStr}${v.key}.png`;
+    const fileId = drivePhotosMap[fileNameJpg] || drivePhotosMap[fileNamePng];
+    const slot = document.getElementById(`slot-${v.key}`);
+
+    if (!fileId) {
+      slot.innerText = 'Brak foto';
+      continue;
+    }
+
+    const url = await fetchAuthorizedPhotoUrl(fileId);
+    if (url) {
+      slot.innerHTML = `<img src="${url}" onclick="openLightbox('${url}', '${dateStr} — ${v.label}')" class="w-full h-full object-cover cursor-pointer" />`;
+    } else {
+      slot.innerText = 'Błąd foto';
+    }
+  }
+}
+
+function renderComparison() {
+  const d1 = document.getElementById('compare-date-1').value;
+  const d2 = document.getElementById('compare-date-2').value;
+  const box = document.getElementById('comparison-box');
+  if (!d1 || !d2 || !sheetRowsAsc.length) return;
+
+  const r1 = sheetRowsAsc.find(r => r[0] === d1);
+  const r2 = sheetRowsAsc.find(r => r[0] === d2);
+  if (!r1 || !r2) return;
+
+  const metrics = [
+    { idx: 1, name: 'Waga', unit: 'kg' },
+    { idx: 2, name: 'Talia', unit: 'cm' },
+    { idx: 3, name: 'Pas', unit: 'cm' },
+    { idx: 4, name: 'Biodra', unit: 'cm' },
+    { idx: 5, name: 'Udo', unit: 'cm' },
+    { idx: 6, name: 'Ramię', unit: 'cm' },
+    { idx: 7, name: 'Pod biustem', unit: 'cm' }
+  ];
+
+  box.innerHTML = metrics.map(m => {
+    const v1 = parseFloat(String(r1[m.idx] || '').replace(',', '.'));
+    const v2 = parseFloat(String(r2[m.idx] || '').replace(',', '.'));
+    let diffStr = '—';
+    if (!isNaN(v1) && !isNaN(v2)) {
+      const diff = (v2 - v1).toFixed(1);
+      diffStr = `${diff > 0 ? '+' : ''}${diff} ${m.unit}`;
+    }
+    return `
+      <div class="flex justify-between items-center bg-[#f8f9fb] px-3 py-2 rounded-xl border border-[#eaecf0]">
+        <span class="font-medium text-gray-800">${m.name}</span>
+        <span>${r1[m.idx] || '-'} → <b>${r2[m.idx] || '-'} ${m.unit}</b> <span class="text-[#f45ca1] font-semibold ml-1">(${diffStr})</span></span>
+      </div>
+    `;
+  }).join('');
+}
+
+function openLightbox(url, caption) {
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox-caption').innerText = caption;
+  document.getElementById('lightbox').classList.remove('hidden');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.add('hidden');
 }
 </script>
 </body>
