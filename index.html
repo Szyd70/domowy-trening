@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Domowy Plan Treningowy</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ec4899" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #fdf2f8; -webkit-tap-highlight-color: transparent; }
+    .tab-active { color: #db2777; border-top: 2px solid #db2777; font-weight: 600; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="pb-24 text-gray-800">
+
+  <!-- HEADER -->
+  <header class="bg-white shadow-sm sticky top-0 z-30 px-4 py-3 flex justify-between items-center">
+    <div>
+      <h1 class="text-lg font-bold text-pink-600">Plan Treningowy</h1>
+      <p id="auth-status" class="text-xs text-gray-500">Niezalogowano z Google</p>
+    </div>
+    <button id="btn-auth" onclick="handleAuthClick()" class="bg-pink-600 hover:bg-pink-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow">
+      Połącz z Google
+    </button>
+  </header>
+
+  <!-- POWIADOMIENIA -->
+  <div id="toast" class="hidden fixed top-16 left-4 right-4 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg text-center"></div>
+
+  <!-- ZAKŁADKA 1: TRENING -->
+  <main id="view-workout" class="p-4 space-y-4">
+    <!-- Wybór Miesiąca i Dnia Tygodnia -->
+    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+      <div class="flex justify-between items-center">
+        <label class="text-xs font-semibold uppercase text-gray-400">Etap programu</label>
+        <select id="select-month" onchange="renderWorkout()" class="text-sm font-semibold bg-pink-50 text-pink-700 px-3 py-1.5 rounded-lg border border-pink-200">
+          <option value="1">Miesiąc 1 (Wprowadzenie)</option>
+          <option value="2">Miesiąc 2 (Progresja)</option>
+          <option value="3" selected>Miesiąc 3 (Zaawansowany)</option>
+        </select>
+      </div>
+
+      <!-- Dni tygodnia -->
+      <div class="grid grid-cols-7 gap-1 text-center pt-1" id="week-days"></div>
+    </div>
+
+    <!-- Timer Przerw / Interwałów -->
+    <div class="bg-gradient-to-r from-pink-600 to-rose-500 text-white p-4 rounded-2xl shadow-md flex justify-between items-center">
+      <div>
+        <div class="text-xs opacity-80 uppercase tracking-wider">Stoper / Przerwa</div>
+        <div id="timer-display" class="text-3xl font-mono font-bold">00:00</div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="startTimer(30)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">30s</button>
+        <button onclick="startTimer(45)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">45s</button>
+        <button onclick="startTimer(60)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">60s</button>
+        <button onclick="startTimer(90)" class="bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-xs font-bold">90s</button>
+        <button onclick="stopTimer()" class="bg-black/25 px-2.5 py-1.5 rounded-lg text-xs font-bold">Stop</button>
+      </div>
+    </div>
+
+    <!-- Lista ćwiczeń na wybrany dzień -->
+    <div id="workout-container" class="space-y-4"></div>
+  </main>
+
+  <!-- ZAKŁADKA 2: POMIARY I ZDJĘCIA -->
+  <main id="view-measurements" class="hidden p-4 space-y-4">
+    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="font-bold text-gray-800">Nowy wpis pomiarowy</h2>
+        <input type="date" id="m-date" class="text-sm border rounded-lg px-2 py-1 bg-gray-50" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Waga (kg)</label>
+          <input type="number" step="0.1" id="m-weight" placeholder="np. 60.5" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Talia (cm) <span class="text-[10px]">(najwęższe)</span></label>
+          <input type="number" step="0.5" id="m-waist" placeholder="np. 66" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Pas (cm) <span class="text-[10px]">(1cm pod pępkiem)</span></label>
+          <input type="number" step="0.5" id="m-belt" placeholder="np. 74" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Biodra (cm) <span class="text-[10px]">(najszersze)</span></label>
+          <input type="number" step="0.5" id="m-hips" placeholder="np. 95" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Udo (cm)</label>
+          <input type="number" step="0.5" id="m-thigh" placeholder="np. 54" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Ramię / Biceps (cm)</label>
+          <input type="number" step="0.5" id="m-arm" placeholder="np. 27" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">Klatka pod biustem (cm)</label>
+          <input type="number" step="0.5" id="m-underbust" placeholder="np. 75" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">Notatka</label>
+          <input type="text" id="m-note" placeholder="np. Po 1 tygodniu powrotu" class="w-full border rounded-xl px-3 py-2" />
+        </div>
+      </div>
+
+      <!-- Zdjęcia sylwetki -->
+      <div class="border-t pt-3 space-y-2">
+        <p class="text-xs font-semibold text-gray-600">Zdjęcia sylwetki (zapis na Dysk Google jako DataPrzod/Tyl/Bok)</p>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <label class="border-2 border-dashed border-pink-200 rounded-xl p-2 cursor-pointer hover:bg-pink-50 flex flex-col items-center justify-center h-24">
+            <span id="lbl-przod" class="font-semibold text-pink-600">+ Przód</span>
+            <input type="file" accept="image/*" id="photo-przod" onchange="previewLabel('photo-przod', 'lbl-przod', 'Przód OK')" class="hidden" />
+          </label>
+          <label class="border-2 border-dashed border-pink-200 rounded-xl p-2 cursor-pointer hover:bg-pink-50 flex flex-col items-center justify-center h-24">
+            <span id="lbl-tyl" class="font-semibold text-pink-600">+ Tył</span>
+            <input type="file" accept="image/*" id="photo-tyl" onchange="previewLabel('photo-tyl', 'lbl-tyl', 'Tył OK')" class="hidden" />
+          </label>
+          <label class="border-2 border-dashed border-pink-200 rounded-xl p-2 cursor-pointer hover:bg-pink-50 flex flex-col items-center justify-center h-24">
+            <span id="lbl-bok" class="font-semibold text-pink-600">+ Bok</span>
+            <input type="file" accept="image/*" id="photo-bok" onchange="previewLabel('photo-bok', 'lbl-bok', 'Bok OK')" class="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <button id="btn-save-measurement" onclick="saveMeasurementAndPhotos()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow">
+        Zapisz pomiary i wyślij zdjęcia
+      </button>
+    </div>
+
+    <!-- Historia z Arkusza Google -->
+    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-gray-800">Historia z Arkusza</h3>
+        <button onclick="loadHistoryFromSheet()" class="text-xs text-pink-600 font-semibold">Odśwież</button>
+      </div>
+      <div id="history-list" class="space-y-2 text-xs text-gray-600">
+        Zaloguj się z Google, aby pobrać historię z arkusza.
+      </div>
+    </div>
+  </main>
+
+  <!-- ZAKŁADKA 3: BAZA ĆWICZEŃ (29 ĆWICZEŃ) -->
+  <main id="view-exercises" class="hidden p-4 space-y-3">
+    <input type="text" id="search-ex" oninput="renderAllExercises()" placeholder="Szukaj ćwiczenia (np. Hip thrust, guma)..." class="w-full bg-white border rounded-xl px-4 py-2.5 text-sm shadow-sm" />
+    <div id="all-exercises-list" class="space-y-3"></div>
+  </main>
+
+  <!-- DOLNA NAWIGACJA -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 grid grid-cols-3 text-center text-xs py-2 z-30">
+    <button onclick="switchTab('workout')" id="nav-workout" class="tab-active py-1 flex flex-col items-center">
+      <span class="text-lg">🏋️‍♀️</span>
+      <span>Trening</span>
+    </button>
+    <button onclick="switchTab('measurements')" id="nav-measurements" class="text-gray-500 py-1 flex flex-col items-center">
+      <span class="text-lg">📏</span>
+      <span>Pomiary i Foto</span>
+    </button>
+    <button onclick="switchTab('exercises')" id="nav-exercises" class="text-gray-500 py-1 flex flex-col items-center">
+      <span class="text-lg">📋</span>
+      <span>Baza (29)</span>
+    </button>
+  </nav>
+
+<script>
+// ================= KONFIGURACJA GOOGLE =================
+const CONFIG = {
+  CLIENT_ID: '809311918834-evq0ienhj58ggvulpmbngeg65d2aakpn.apps.googleusercontent.com',
+  SPREADSHEET_ID: '1hbjV_lS50ef_ztSo0FDjJyHEkIZc7TOJRaHJJs1u5YE',
+  SHEET_NAME: 'Pomiary',
+  DRIVE_FOLDER_ID: '12lamx08GNPLhjWJSKGkLfMr0kCHjJP9a',
+  SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'
+};
+
+let tokenClient;
+let accessToken = localStorage.getItem('g_access_token') || null;
+let selectedDay = new Date().getDay(); // 0=Nd, 1=Pn...
+
+// ================= BAZA 29 ĆWICZEŃ =================
+// Pliki graficzne wrzuć do folderu /exercises/ pod podanymi nazwami
+const EXERCISES_DB = {
+  donkey_kicks: { name: 'Donkey kicks z gumą', img: 'exercises/donkey_kicks.jpg', eq: 'Guma mini-band' },
+  fire_hydrant: { name: 'Fire hydrant z gumą', img: 'exercises/fire_hydrant.jpg', eq: 'Guma mini-band' },
+  hip_thrust: { name: 'Hip thrust z obciążeniem / długą gumą', img: 'exercises/hip_thrust.jpg', eq: 'Hantle / Długa guma + pufa' },
+  hip_thrust_1leg: { name: 'Hip thrust jednonóż z obciążeniem', img: 'exercises/hip_thrust_1leg.jpg', eq: 'Hantel + pufa' },
+  deadlift: { name: 'Martwy ciąg z obciążeniem / długą gumą', img: 'exercises/deadlift.jpg', eq: 'Hantle / Długa guma' },
+  rdl: { name: 'Rumuński martwy ciąg z obciążeniem / długą gumą', img: 'exercises/rdl.jpg', eq: 'Hantle / Długa guma' },
+  lat_pulldown: { name: 'Ściąganie na plecy z gumą', img: 'exercises/lat_pulldown.jpg', eq: 'Guma oporowa' },
+  lat_pulldown_seated: { name: 'Ściąganie z gumą za plecy (siedząc)', img: 'exercises/lat_pulldown_seated.jpg', eq: 'Guma oporowa' },
+  front_raise: { name: 'Wznosy w przód z obciążeniem', img: 'exercises/front_raise.jpg', eq: 'Hantle' },
+  lateral_raise: { name: 'Wznosy w bok z obciążeniem', img: 'exercises/lateral_raise.jpg', eq: 'Hantle' },
+  rear_delt_raise: { name: 'Wznosy w bok w opadzie tułowia z obciążeniem', img: 'exercises/rear_delt_raise.jpg', eq: 'Hantle' },
+  shoulder_abduction: { name: 'Odwodzenie na barki z gumą', img: 'exercises/shoulder_abduction.jpg', eq: 'Guma mini-band' },
+  overhead_press: { name: 'Wznosy nad głowę z obciążeniem / długą gumą', img: 'exercises/overhead_press.jpg', eq: 'Hantle / Długa guma' },
+  arnold_press: { name: 'Arnoldki z obciążeniem', img: 'exercises/arnold_press.jpg', eq: 'Hantle' },
+  row: { name: 'Wiosłowanie z obciążeniem / długą gumą', img: 'exercises/row.jpg', eq: 'Hantle / Długa guma' },
+  row_1arm: { name: 'Wiosłowanie jednorącz w opadzie tułowia', img: 'exercises/row_1arm.jpg', eq: 'Hantel + podparcie' },
+  kickbacks: { name: 'Kickbacks z gumą stojąc', img: 'exercises/kickbacks.jpg', eq: 'Guma mini-band' },
+  glute_bridge: { name: 'Glute bridge z krótką / długą gumą', img: 'exercises/glute_bridge.jpg', eq: 'Guma' },
+  glute_bridge_1leg: { name: 'Glute bridge jednonóż z gumą', img: 'exercises/glute_bridge_1leg.jpg', eq: 'Guma mini-band' },
+  side_abduction: { name: 'Odwodzenie nogi w bok z gumą stojąc', img: 'exercises/side_abduction.jpg', eq: 'Guma mini-band' },
+  lying_abduction: { name: 'Odwodzenie nóg z gumą leżąc na plecach', img: 'exercises/lying_abduction.jpg', eq: 'Guma mini-band' },
+  clamshell: { name: 'Clamshell z gumą (muszelka)', img: 'exercises/clamshell.jpg', eq: 'Guma mini-band' },
+  reverse_lunges: { name: 'Zakroki z nogami na przemian z obciążeniem', img: 'exercises/reverse_lunges.jpg', eq: 'Hantle' },
+  bulgarian_split: { name: 'Przysiad bułgarski z obciążeniem / długą gumą', img: 'exercises/bulgarian_split.jpg', eq: 'Hantle / Guma + pufa' },
+  box_sumo_sq: { name: 'Box Sumo SQ z obciążeniem / długą gumą', img: 'exercises/box_sumo_sq.jpg', eq: 'Hantle / Guma + pufa' },
+  knee_tucks: { name: 'Przyciąganie kolan do klatki', img: 'exercises/knee_tucks.jpg', eq: 'Mata' },
+  plank: { name: 'Plank (deska)', img: 'exercises/plank.jpg', eq: 'Mata' },
+  side_plank: { name: 'Plank boczny', img: 'exercises/side_plank.jpg', eq: 'Mata' },
+  leg_raises: { name: 'Wznosy nóg leżąc', img: 'exercises/leg_raises.jpg', eq: 'Mata' },
+  frog_crunches: { name: 'Frog crunches', img: 'exercises/frog_crunches.jpg', eq: 'Mata' },
+  alt_vups: { name: 'V-ups naprzemiennie', img: 'exercises/alt_vups.jpg', eq: 'Mata' }
+};
+
+// ================= PLANY TRENINGOWE (LOGIKA 3 MIESIĘCY) =================
+const PLANS = {
+  1: { // MIESIĄC 1 (3 serie / wprowadzenie)
+    A: {
+      title: 'Trening A (Miesiąc 1)',
+      blocks: [
+        { name: 'Superset 1 (3 razy, przerwa 90s)', items: [
+          { ex: 'donkey_kicks', reps: '12x na nogę' },
+          { ex: 'hip_thrust_1leg', reps: '10x na nogę' },
+          { ex: 'rear_delt_raise', reps: '12x' }
+        ]},
+        { name: 'Superset 2 (3 razy, przerwa 90s)', items: [
+          { ex: 'lying_abduction', reps: '12x' },
+          { ex: 'rdl', reps: '10x' },
+          { ex: 'row_1arm', reps: '8x na stronę' }
+        ]},
+        { name: 'Superset 3 (3 razy, przerwa 90s)', items: [
+          { ex: 'leg_raises', reps: '10x' },
+          { ex: 'plank', reps: '45s' }
+        ]}
+      ]
+    },
+    B: {
+      title: 'Trening B (Miesiąc 1)',
+      blocks: [
+        { name: 'Superset 1 (3 razy, przerwa 90s)', items: [
+          { ex: 'kickbacks', reps: '12x na nogę' },
+          { ex: 'glute_bridge_1leg', reps: '10x na nogę' },
+          { ex: 'lat_pulldown_seated', reps: '15x' }
+        ]},
+        { name: 'Superset 2 (3 razy, przerwa 90s)', items: [
+          { ex: 'clamshell', reps: '12x na nogę' },
+          { ex: 'box_sumo_sq', reps: '10x' },
+          { ex: 'arnold_press', reps: '12x' }
+        ]},
+        { name: 'Superset 3 (3 razy, przerwa 90s)', items: [
+          { ex: 'side_plank', reps: '20s na stronę' },
+          { ex: 'alt_vups', reps: '20x' }
+        ]}
+      ]
+    }
+  },
+  2: { // MIESIĄC 2 (AMRAP 6' + 4 serie)
+    A: {
+      title: 'Trening A (Miesiąc 2)',
+      blocks: [
+        { name: 'Superset 1 (4 razy, przerwa 90s)', items: [
+          { ex: 'donkey_kicks', reps: '15x na nogę' },
+          { ex: 'hip_thrust', reps: '15x' },
+          { ex: 'lateral_raise', reps: '12x' }
+        ]},
+        { name: 'Superset 2 (4 razy, przerwa 90s)', items: [
+          { ex: 'fire_hydrant', reps: '15x na nogę' },
+          { ex: 'rdl', reps: '12x' },
+          { ex: 'front_raise', reps: '12x' }
+        ]},
+        { name: 'AMRAP 6 minut (maksymalna ilość rund)', items: [
+          { ex: 'knee_tucks', reps: '15x' },
+          { ex: 'plank', reps: '45s' }
+        ]}
+      ]
+    },
+    B: {
+      title: 'Trening B (Miesiąc 2)',
+      blocks: [
+        { name: 'Superset 1 (4 razy, przerwa 90s)', items: [
+          { ex: 'kickbacks', reps: '15x na nogę' },
+          { ex: 'glute_bridge', reps: '15x' },
+          { ex: 'row', reps: '12x' }
+        ]},
+        { name: 'Superset 2 (4 razy, przerwa 90s)', items: [
+          { ex: 'side_abduction', reps: '15x na nogę' },
+          { ex: 'reverse_lunges', reps: '20x' },
+          { ex: 'overhead_press', reps: '12x' }
+        ]},
+        { name: 'Tabata (6 serii: 30s pracy / 20s przerwy)', items: [
+          { ex: 'frog_crunches', reps: '30s (serie nieparzyste)' },
+          { ex: 'alt_vups', reps: '30s (serie parzyste)' }
+        ]}
+      ]
+    }
+  },
+  3: { // MIESIĄC 3 (AMRAP 8' + Tabata 8 serii)
+    A: {
+      title: 'Trening A (Miesiąc 3)',
+      blocks: [
+        { name: 'Superset 1 (4 razy, przerwa 30s)', items: [
+          { ex: 'donkey_kicks', reps: '15x na nogę' },
+          { ex: 'fire_hydrant', reps: '15x na nogę' }
+        ]},
+        { name: 'Superset 2 (4 razy, przerwa 60s)', items: [
+          { ex: 'hip_thrust', reps: '12x' },
+          { ex: 'deadlift', reps: '12x' }
+        ]},
+        { name: 'Superset 3 (4 razy, przerwa 60s)', items: [
+          { ex: 'lat_pulldown', reps: '10x' },
+          { ex: 'front_raise', reps: '10x' },
+          { ex: 'lateral_raise', reps: '10x' }
+        ]},
+        { name: 'AMRAP 8 minut (maksymalna ilość rund)', items: [
+          { ex: 'knee_tucks', reps: '15x' },
+          { ex: 'plank', reps: '45s' }
+        ]}
+      ]
+    },
+    B: {
+      title: 'Trening B (Miesiąc 3)',
+      blocks: [
+        { name: 'Superset 1 (4 razy, przerwa 30s)', items: [
+          { ex: 'kickbacks', reps: '15x na nogę' },
+          { ex: 'side_abduction', reps: '15x na nogę' }
+        ]},
+        { name: 'Superset 2 (4 razy, przerwa 60s)', items: [
+          { ex: 'glute_bridge', reps: '12x' },
+          { ex: 'bulgarian_split', reps: '10x na nogę' }
+        ]},
+        { name: 'Superset 3 (4 razy, przerwa 60s)', items: [
+          { ex: 'shoulder_abduction', reps: '10x' },
+          { ex: 'row', reps: '10x' },
+          { ex: 'overhead_press', reps: '10x' }
+        ]},
+        { name: 'Tabata (8 serii: 30s pracy / 20s przerwy)', items: [
+          { ex: 'frog_crunches', reps: '30s (serie 1,3,5,7)' },
+          { ex: 'alt_vups', reps: '30s (serie 2,4,6,8)' }
+        ]}
+      ]
+    }
+  }
+};
+
+// Harmonogram tygodniowy: Pn=A, Wt=Wolne, Śr=B, Czw=Wolne, Pt=A, Sob=B(opcjonalnie), Nd=Wolne
+const SCHEDULE_MAP = {
+  1: { label: 'Pn', type: 'A' },
+  2: { label: 'Wt', type: 'REST' },
+  3: { label: 'Śr', type: 'B' },
+  4: { label: 'Cz', type: 'REST' },
+  5: { label: 'Pt', type: 'A' },
+  6: { label: 'So', type: 'B' },
+  0: { label: 'Nd', type: 'REST' }
+};
+
+// ================= INICJALIZACJA GOOGLE OAUTH =================
+window.onload = () => {
+  document.getElementById('m-date').valueAsDate = new Date();
+  renderWeekDays();
+  renderWorkout();
+  renderAllExercises();
+
+  if (accessToken) {
+    document.getElementById('auth-status').innerText = 'Połączono z Google';
+    document.getElementById('btn-auth').innerText = 'Odśwież sesję';
+    loadHistoryFromSheet();
+  }
+
+  if (typeof google !== 'undefined') {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.CLIENT_ID,
+      scope: CONFIG.SCOPES,
+      callback: (resp) => {
+        if (resp.error) { showToast('Błąd logowania: ' + resp.error); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('g_access_token', accessToken);
+        document.getElementById('auth-status').innerText = 'Połączono z Google ✅';
+        showToast('Zalogowano pomyślnie!');
+        loadHistoryFromSheet();
+      }
+    });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+};
+
+function handleAuthClick() {
+  if (!tokenClient) { showToast('Ładowanie biblioteki Google...'); return; }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+// ================= UI I NAWIGACJA =================
+function switchTab(tab) {
+  ['workout', 'measurements', 'exercises'].forEach(t => {
+    document.getElementById('view-' + t).classList.add('hidden');
+    document.getElementById('nav-' + t).classList.remove('tab-active');
+    document.getElementById('nav-' + t).classList.add('text-gray-500');
+  });
+  document.getElementById('view-' + tab).classList.remove('hidden');
+  document.getElementById('nav-' + tab).classList.add('tab-active');
+  document.getElementById('nav-' + tab).classList.remove('text-gray-500');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.innerText = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3500);
+}
+
+// ================= RENDEROWANIE TRENINGU =================
+function renderWeekDays() {
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const container = document.getElementById('week-days');
+  container.innerHTML = order.map(d => {
+    const info = SCHEDULE_MAP[d];
+    const isSelected = d === selectedDay;
+    const badge = info.type === 'REST' ? 'Reg.' : info.type;
+    return `
+      <button onclick="selectDay(${d})" class="py-2 rounded-xl flex flex-col items-center transition ${isSelected ? 'bg-pink-600 text-white shadow' : 'bg-gray-50 text-gray-600'}">
+        <span class="text-xs font-bold">${info.label}</span>
+        <span class="text-[10px] mt-0.5 ${isSelected ? 'text-pink-100' : 'text-pink-600 font-semibold'}">${badge}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function selectDay(d) {
+  selectedDay = d;
+  renderWeekDays();
+  renderWorkout();
+}
+
+function renderWorkout() {
+  const container = document.getElementById('workout-container');
+  const dayInfo = SCHEDULE_MAP[selectedDay];
+  const month = document.getElementById('select-month').value;
+
+  if (dayInfo.type === 'REST') {
+    container.innerHTML = `
+      <div class="bg-white p-8 rounded-2xl shadow-sm text-center space-y-2">
+        <div class="text-4xl">🧘‍♀️</div>
+        <h3 class="font-bold text-gray-800 text-lg">Dzień regeneracji</h3>
+        <p class="text-sm text-gray-500">Odpoczynek, spacer lub lekkie rozciąganie. Jeśli chcesz zrobić trening, wybierz Pn, Śr, Pt lub So.</p>
+      </div>`;
+    return;
+  }
+
+  const plan = PLANS[month][dayInfo.type];
+  let html = `<h2 class="font-bold text-gray-800 text-lg px-1">${plan.title}</h2>`;
+
+  plan.blocks.forEach((block, bIdx) => {
+    html += `
+      <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
+        <div class="bg-pink-50 text-pink-700 font-bold text-xs px-3 py-1.5 rounded-lg uppercase tracking-wide">
+          ${block.name}
+        </div>
+        <div class="space-y-3 divide-y divide-gray-100">
+          ${block.items.map((item, iIdx) => {
+            const ex = EXERCISES_DB[item.ex];
+            return `
+              <div class="pt-3 first:pt-0 flex items-center gap-3">
+                <img src="${ex.img}" onerror="this.src='https://placehold.co/120x90/fce7f3/db2777?text=Foto'" class="w-20 h-16 object-cover rounded-xl bg-pink-50 shrink-0 border border-pink-100" />
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-sm text-gray-800 leading-tight">${ex.name}</div>
+                  <div class="text-xs text-pink-600 font-bold mt-1">${item.reps}</div>
+                  <div class="text-[11px] text-gray-400">${ex.eq}</div>
+                </div>
+                <input type="checkbox" class="w-5 h-5 accent-pink-600 rounded" />
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderAllExercises() {
+  const q = document.getElementById('search-ex').value.toLowerCase();
+  const list = document.getElementById('all-exercises-list');
+  const entries = Object.values(EXERCISES_DB).filter(e => e.name.toLowerCase().includes(q) || e.eq.toLowerCase().includes(q));
+  list.innerHTML = entries.map(ex => `
+    <div class="bg-white p-3 rounded-2xl shadow-sm flex items-center gap-3">
+      <img src="${ex.img}" onerror="this.src='https://placehold.co/120x90/fce7f3/db2777?text=Foto'" class="w-20 h-16 object-cover rounded-xl bg-pink-50 shrink-0" />
+      <div>
+        <div class="font-semibold text-sm text-gray-800">${ex.name}</div>
+        <div class="text-xs text-gray-500 mt-0.5">${ex.eq}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ================= STOPER / TIMER =================
+let timerInterval;
+function startTimer(seconds) {
+  clearInterval(timerInterval);
+  let left = seconds;
+  updateTimerDisplay(left);
+  timerInterval = setInterval(() => {
+    left--;
+    updateTimerDisplay(left);
+    if (left <= 0) {
+      clearInterval(timerInterval);
+      if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+      showToast('⏰ Koniec przerwy! Kolejna seria!');
+    }
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+  document.getElementById('timer-display').innerText = '00:00';
+}
+function updateTimerDisplay(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
+  document.getElementById('timer-display').innerText = `${m}:${s}`;
+}
+
+// ================= ZDJĘCIA I KOMPRESJA + GOOGLE DRIVE =================
+function previewLabel(inputId, labelId, text) {
+  const input = document.getElementById(inputId);
+  if (input.files && input.files[0]) {
+    document.getElementById(labelId).innerText = '✅ ' + text;
+  }
+}
+
+function compressImage(file, maxWidth = 1280, quality = 0.82) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+      };
+    };
+  });
+}
+
+async function uploadPhotoToDrive(fileInputId, fileName) {
+  const input = document.getElementById(fileInputId);
+  if (!input.files || !input.files[0]) return '';
+
+  const compressedBlob = await compressImage(input.files[0]);
+  const metadata = {
+    name: fileName + '.jpg',
+    parents: [CONFIG.DRIVE_FOLDER_ID]
+  };
+
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', compressedBlob);
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken },
+    body: form
+  });
+
+  if (!res.ok) throw new Error('Błąd wysyłania zdjęcia ' + fileName);
+  const data = await res.json();
+  return data.id;
+}
+
+// ================= ZAPIS DO GOOGLE SHEETS =================
+async function saveMeasurementAndPhotos() {
+  if (!accessToken) {
+    showToast('Najpierw kliknij "Połącz z Google" u góry ekranu!');
+    return;
+  }
+
+  const btn = document.getElementById('btn-save-measurement');
+  btn.disabled = true;
+  btn.innerText = 'Wysyłanie danych i zdjęć...';
+
+  const dateVal = document.getElementById('m-date').value || new Date().toISOString().split('T')[0];
+
+  try {
+    // 1. Wyślij zdjęcia na Dysk Google z nazwami DataPrzod, DataTyl, DataBok
+    const przodId = await uploadPhotoToDrive('photo-przod', `${dateVal}Przod`);
+    const tylId = await uploadPhotoToDrive('photo-tyl', `${dateVal}Tyl`);
+    const bokId = await uploadPhotoToDrive('photo-bok', `${dateVal}Bok`);
+
+    // 2. Przygotuj wiersz do Arkusza Google
+    const row = [
+      dateVal,
+      document.getElementById('m-weight').value || '',
+      document.getElementById('m-waist').value || '',
+      document.getElementById('m-belt').value || '',
+      document.getElementById('m-hips').value || '',
+      document.getElementById('m-thigh').value || '',
+      document.getElementById('m-arm').value || '',
+      document.getElementById('m-underbust').value || '',
+      document.getElementById('m-note').value || '',
+      przodId,
+      tylId,
+      bokId
+    ];
+
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.SHEET_NAME}!A:L:append?valueInputOption=USER_ENTERED`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ values: [row] })
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem('g_access_token');
+        accessToken = null;
+        throw new Error('Sesja Google wygasła — kliknij "Połącz z Google" ponownie.');
+      }
+      throw new Error('Błąd zapisu do Arkusza Google');
+    }
+
+    showToast('✅ Zapisano pomiary w Arkuszu i zdjęcia na Dysku!');
+    loadHistoryFromSheet();
+  } catch (err) {
+    showToast('❌ ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = 'Zapisz pomiary i wyślij zdjęcia';
+  }
+}
+
+async function loadHistoryFromSheet() {
+  if (!accessToken) return;
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.SHEET_NAME}!A2:L50`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = (data.values || []).reverse();
+    const container = document.getElementById('history-list');
+
+    if (!rows.length) {
+      container.innerHTML = 'Brak zapisanych pomiarów w arkuszu.';
+      return;
+    }
+
+    container.innerHTML = rows.map(r => `
+      <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
+        <div class="flex justify-between font-bold text-gray-800">
+          <span>📅 ${r[0] || '-'}</span>
+          <span class="text-pink-600">${r[1] ? r[1] + ' kg' : ''}</span>
+        </div>
+        <div class="text-[11px] text-gray-600">
+          Talia: <b>${r[2] || '-'}</b> | Pas: <b>${r[3] || '-'}</b> | Biodra: <b>${r[4] || '-'}</b> | Udo: <b>${r[5] || '-'}</b> | Ramię: <b>${r[6] || '-'}</b> | Pod biustem: <b>${r[7] || '-'}</b>
+        </div>
+        ${r[8] ? `<div class="text-[11px] italic text-gray-500">"${r[8]}"</div>` : ''}
+        <div class="flex gap-2 pt-1 text-[11px]">
+          ${r[9] ? `<a href="https://drive.google.com/file/d/${r[9]}/view" target="_blank" class="text-pink-600 underline">📷 Przód</a>` : ''}
+          ${r[10] ? `<a href="https://drive.google.com/file/d/${r[10]}/view" target="_blank" class="text-pink-600 underline">📷 Tył</a>` : ''}
+          ${r[11] ? `<a href="https://drive.google.com/file/d/${r[11]}/view" target="_blank" class="text-pink-600 underline">📷 Bok</a>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {}
+}
+</script>
+</body>
+</html>
